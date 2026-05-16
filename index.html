@@ -3,16 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>116會考衝刺戰情室 - 社群聯賽版</title>
+    <title>116會考衝刺戰情室 - 聯賽社群完整版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4f46e5">
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, updateDoc, increment, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ⚠️ 請在這裡替換成你自己在 Firebase 後端申請的專案金鑰
         const firebaseConfig = {
             apiKey: "AIzaSyBJyg184MA4x0wkOpw6Fq8FTIUjoQTezYo",
             authDomain: "cap-116-warroom.firebaseapp.com",
@@ -27,12 +31,31 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        setPersistence(auth, browserLocalPersistence);
+
+        // 將變數與函數綁定到 window 供全域調用
         window.fbAuth = auth;
         window.fbDb = db;
+        window.firebaseLogin = signInWithEmailAndPassword;
+        window.firebaseRegister = createUserWithEmailAndPassword;
+        window.firebaseSignOut = signOut;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseUpdateDoc = updateDoc;
+        window.firebaseIncrement = increment;
+        window.firebaseAddDoc = addDoc;
+        window.firebaseOnAuthStateChanged = onAuthStateChanged;
+        window.firebaseCollection = collection;
+        window.firebaseQuery = query;
+        window.firebaseOrderBy = orderBy;
+        window.firebaseLimit = limit;
+        window.firebaseOnSnapshot = onSnapshot;
     </script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen pb-12">
 
+    <!-- 頂部導航欄 -->
     <header class="bg-gradient-to-r from-indigo-600 to-violet-700 text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
             <h1 class="text-xl md:text-2xl font-bold tracking-wider"><i class="fa-solid fa-users-rectangle mr-2"></i>116會考衝刺社群網</h1>
@@ -44,9 +67,12 @@
         </div>
     </header>
 
+    <!-- 主內容區 -->
     <main class="max-w-7xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         
+        <!-- 左側與中間主要區塊 -->
         <div class="lg:col-span-2 space-y-6">
+            <!-- 倒數與金句 -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="bg-rose-50 rounded-xl p-4 border border-rose-100 text-center flex flex-col justify-center">
                     <h2 class="text-xs font-bold text-rose-600 tracking-wider">116會考倒數</h2>
@@ -58,7 +84,9 @@
                 </div>
             </div>
 
+            <!-- 計時器與時長賽事榜 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 計時器 -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
                     <div>
                         <h2 class="text-base font-bold text-slate-800 mb-2 flex items-center"><i class="fa-solid fa-stopwatch text-emerald-500 mr-2"></i>圖書專注計時器</h2>
@@ -72,33 +100,35 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[200px] md:h-auto">
+                <!-- 戰友讀書時長聯賽榜 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[230px] md:h-auto">
                     <h2 class="text-base font-bold text-slate-800 mb-3 flex items-center justify-between">
                         <span><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>戰友讀書時長榜</span>
-                        <span class="text-xs text-slate-400 font-normal">即時更新</span>
+                        <span class="text-xs text-slate-400 font-normal animate-pulse">● LIVE 競賽中</span>
                     </h2>
-                    <div id="leaderboard-list" class="flex-1 overflow-y-auto space-y-2 text-xs">
-                        <p class="text-slate-400 text-center py-4">登入後即可加入社群競賽...</p>
+                    <div id="leaderboard-list" class="flex-1 overflow-y-auto space-y-2 text-xs pr-1">
+                        <p class="text-slate-400 text-center py-4">正在載入全台聯賽榜...</p>
                     </div>
                 </div>
             </div>
 
+            <!-- 單字庫 -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <h2 class="text-base font-bold text-slate-800 flex items-center"><i class="fa-solid fa-spell-check text-amber-500 mr-2"></i>會考必備單字庫 (A-Z)</h2>
                     <div class="flex items-center gap-2 text-xs">
-                        <select id="vocab-page-select" onchange="loadVocabPage()" class="bg-slate-100 border-none rounded-lg p-1.5 font-medium text-slate-600 focus:ring-2 focus:ring-indigo-500">
-                            </select>
+                        <select id="vocab-page-select" onchange="loadVocabPage()" class="bg-slate-100 border-none rounded-lg p-1.5 font-medium text-slate-600 focus:ring-2 focus:ring-indigo-500"></select>
                         <span id="vocab-progress" class="bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-bold">進度: 0%</span>
                     </div>
                 </div>
                 <input type="text" id="vocab-search" oninput="searchVocab()" placeholder="🔍 輸入英文或中文快速搜尋..." class="w-full px-4 py-2 mb-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <div id="vocab-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[350px] overflow-y-auto pr-1 text-xs">
-                    </div>
+                <div id="vocab-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[350px] overflow-y-auto pr-1 text-xs"></div>
             </div>
         </div>
 
+        <!-- 右側輔助與社群功能欄 -->
         <div class="space-y-6">
+            <!-- 目標學校與資源 -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                 <div>
                     <h2 class="text-base font-bold text-slate-800 mb-2 flex items-center"><i class="fa-solid fa-bullseye text-violet-500 mr-2"></i>我的第一志願目標</h2>
@@ -114,9 +144,51 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 戰士誓師廣場 (即時留言板) -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-comments text-indigo-500 mr-2"></i>戰士誓師廣場
+                    </h2>
+                    <span class="animate-pulse bg-indigo-50 text-indigo-600 text-[10px] font-bold px-2 py-0.5 rounded-full">LIVE 即時</span>
+                </div>
+
+                <!-- 分類 Tab -->
+                <div class="flex gap-1 text-xs overflow-x-auto pb-1">
+                    <button onclick="filterForum('all')" id="forum-tab-all" class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm shrink-0">全部</button>
+                    <button onclick="filterForum('激勵')" id="forum-tab-激勵" class="px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium shrink-0">🔥 誓師激勵</button>
+                    <button onclick="filterForum('發問')" id="forum-tab-發問" class="px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium shrink-0">📝 學科發問</button>
+                    <button onclick="filterForum('抒發')" id="forum-tab-抒發" class="px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium shrink-0">☕ 心情抒發</button>
+                </div>
+
+                <!-- 輸入發布區塊 -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2">
+                    <div class="flex gap-2 items-center text-[11px]">
+                        <select id="forum-tag-select" class="bg-white border border-slate-200 rounded-lg px-2 py-1 font-medium text-slate-600">
+                            <option value="激勵">🔥 激勵</option>
+                            <option value="發問">📝 發問</option>
+                            <option value="抒發">☕ 抒發</option>
+                        </select>
+                        <span class="text-slate-400 truncate">以「<span id="forum-sender-name" class="font-bold text-slate-600">訪客戰士</span>」發言</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="forum-input" placeholder="寫下你的倒數豪語、打氣或發問..." class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="sendForumPost()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 rounded-xl text-xs transition shrink-0 shadow-sm">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 訊息牆牆面 -->
+                <div id="forum-posts-container" class="space-y-2 max-h-[350px] overflow-y-auto pr-1 text-xs">
+                    <p class="text-slate-400 text-center py-6">正在同步時空留言牆...</p>
+                </div>
+            </div>
         </div>
     </main>
 
+    <!-- 登入註冊彈窗 -->
     <div id="auth-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative">
             <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -143,35 +215,86 @@
         </div>
     </div>
 
+    <!-- 個人檔案彈窗 -->
+    <div id="profile-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative">
+            <button onclick="closeProfileModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <div class="text-center pb-4 border-b border-slate-100">
+                <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto text-2xl font-black mb-2 shadow-sm">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h3 id="profile-user-name" class="text-base font-bold text-slate-800">戰士載入中...</h3>
+                <p id="profile-user-email" class="text-xs text-slate-400 mt-0.5">---</p>
+            </div>
+            
+            <div class="py-4 space-y-4 text-xs">
+                <div class="bg-emerald-50 rounded-xl p-3.5 border border-emerald-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-emerald-700 font-bold"><i class="fa-solid fa-hourglass-high mr-1"></i>雲端總讀書時長</p>
+                        <p class="text-slate-400 text-[10px] mt-0.5">計時器上傳之累計時間</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="profile-total-time" class="text-xl font-black text-emerald-600">0</span>
+                        <span class="text-emerald-700 font-bold ml-0.5">分鐘</span>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 rounded-xl p-3.5 border border-amber-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-amber-700 font-bold"><i class="fa-solid fa-book-open mr-1"></i>單字斬獲進度</p>
+                        <p class="text-slate-400 text-[10px] mt-0.5">字庫已勾選熟記</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="profile-total-words" class="text-xl font-black text-amber-600">0</span>
+                        <span class="text-amber-700 font-bold ml-0.5">字</span>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-50 rounded-xl p-3.5 border border-indigo-100">
+                    <p class="text-indigo-700 font-bold mb-1"><i class="fa-solid fa-flag mr-1"></i>終極鎖定目標學校</p>
+                    <p id="profile-target-display" class="text-slate-700 font-medium italic">尚未設定志願學校</p>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="handleLogOut()" class="w-full bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 font-bold py-2 rounded-xl text-xs transition">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i> 登出此戰士帳號
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 核心JavaScript邏輯控制 -->
     <script>
-        // 1. 完整匯入您上傳的會考單字庫資料
+        // 1. 單字庫數據庫
         const rawWordBank = [
             { id: 1, word: "able", detail: "adj. 有能力的" }, { id: 2, word: "about", detail: "prep. 有關" }, { id: 3, word: "above", detail: "adv. 在上方" }, { id: 4, word: "abroad", detail: "adv. 在國外" }, { id: 5, word: "absent", detail: "adj. 缺席的" },
-            { id: 6, word: "accept", detail: "v. 接受" }, { id: 7, word: "accident", detail: "v. 接受" }, { id: 8, word: "across", detail: "prep. 在...對面" }, { id: 9, word: "act", detail: "n. 行為" }, { id: 10, word: "action", detail: "n. 活動" },
+            { id: 6, word: "accept", detail: "v. 接受" }, { id: 7, word: "accident", detail: "n. 意外" }, { id: 8, word: "across", detail: "prep. 在...對面" }, { id: 9, word: "act", detail: "n. 行為" }, { id: 10, word: "action", detail: "n. 活動" },
             { id: 11, word: "active", detail: "adj. 積極的" }, { id: 12, word: "activity", detail: "n. 活動" }, { id: 13, word: "actor", detail: "n. 男演員" }, { id: 14, word: "actress", detail: "n. 女演員" }, { id: 15, word: "actually", detail: "adv. 確實" },
-            { id: 16, word: "add", detail: "v. 增加" }, { id: 17, word: "address", detail: "n. 地址" }, { id: 18, word: "admire", detail: "v. 欽佩" }, { id: 19, word: "adult", detail: "1. 成人" }, { id: 20, word: "advertisement", detail: "n. 廣告" },
+            { id: 16, word: "add", detail: "v. 增加" }, { id: 17, word: "address", detail: "n. 地址" }, { id: 18, word: "admire", detail: "v. 欽佩" }, { id: 19, word: "adult", detail: "n. 成人" }, { id: 20, word: "advertisement", detail: "n. 廣告" },
             { id: 21, word: "advice", detail: "n. 勸告" }, { id: 22, word: "advise", detail: "v. 勸告" }, { id: 23, word: "affect", detail: "v. 影響" }, { id: 24, word: "afraid", detail: "adj. 害怕的" }, { id: 25, word: "after", detail: "conj. 在...之後" },
-            { id: 26, word: "afternoon", detail: "n. 下午" }, { id: 27, word: "again", detail: "adv. 再度" }, { id: 28, word: "against", detail: "prep. 靠著" }, { id: 29, word: "age", detail: "n. 年齡" }, { id: 30, word: "ago", detail: "adv....之前" },
-            { id: 31, word: "agree", detail: "v. 同意" }, { id: 32, word: "ahead", detail: "adv.向前" }, { id: 33, word: "aim", detail: "2. 目標" }, { id: 34, word: "air", detail: "n. 空氣" }, { id: 35, word: "airplane", detail: "飛機" },
-            { id: 36, word: "airport", detail: "n. 機場" }, { id: 37, word: "alarm", detail: "7. 警報器" }, { id: 38, word: "album", detail: "n. 相簿" }, { id: 39, word: "alike", detail: "adv. 相同地" }, { id: 40, word: "alive", detail: "adj. 活的" },
+            { id: 26, word: "afternoon", detail: "n. 下午" }, { id: 27, word: "again", detail: "adv. 再度" }, { id: 28, word: "against", detail: "prep. 靠著" }, { id: 29, word: "age", detail: "n. 年齡" }, { id: 30, word: "ago", detail: "adv. ...之前" },
+            { id: 31, word: "agree", detail: "v. 同意" }, { id: 32, word: "ahead", detail: "adv. 向前" }, { id: 33, word: "aim", detail: "n. 目標" }, { id: 34, word: "air", detail: "n. 空氣" }, { id: 35, word: "airplane", detail: "n. 飛機" },
+            { id: 36, word: "airport", detail: "n. 機場" }, { id: 37, word: "alarm", detail: "n. 警報器" }, { id: 38, word: "album", detail: "n. 相簿" }, { id: 39, word: "alike", detail: "adv. 相同地" }, { id: 40, word: "alive", detail: "adj. 活的" },
             { id: 41, word: "all", detail: "adj. 全部的" }, { id: 42, word: "allow", detail: "v. 允許" }, { id: 43, word: "almost", detail: "adv. 幾乎" }, { id: 44, word: "alone", detail: "adv. 獨自地" }, { id: 45, word: "along", detail: "prep. 沿著" },
-            { id: 46, word: "aloud", detail: "adv. 大聲地" }, { id: 47, word: "already", detail: "adv.已經" }, { id: 48, word: "also", detail: "adv. 也" }, { id: 49, word: "altogether", detail: "adv. 總共" }, { id: 50, word: "always", detail: "adv. 總是" },
-            { id: 51, word: "baby", detail: "n. 嬰兒" }, { id: 52, word: "baby sitter", detail: "n. 保母" }, { id: 53, word: "back", detail: "n. 背部" }, { id: 54, word: "badminton", detail: "n. 羽毛球" }, { id: 55, word: "bakery", detail: "n. 麵包店" },
-            { id: 56, word: "cabbage", detail: "n. 甘藍菜" }, { id: 57, word: "cafeteria", detail: "n.自助餐廳" }, { id: 58, word: "calendar", detail: "n. 日曆" }, { id: 59, word: "camera", detail: "n. 照相機" }, { id: 60, word: "delicious", detail: "adj. 美味的" },
-            { id: 61, word: "earring", detail: "n. 耳環" }, { id: 62, word: "earth", detail: "n. 地球" }, { id: 63, word: "factory", detail: "n. 工廠" }, { id: 64, word: "fever", detail: "n. 發燒" }, { id: 65, word: "garage", detail: "n. 車庫" },
-            { id: 66, word: "hamburger", detail: "n. 漢堡" }, { id: 67, word: "imagine", detail: "v. 想像" }, { id: 68, word: "jeans", detail: "n. 牛仔褲" }, { id: 69, word: "knowledge", detail: "n. 知識" }, { id: 70, word: "language", detail: "n. 語言" },
-            { id: 71, word: "machine", detail: "n.機器" }, { id: 72, word: "napkin", detail: "n. 餐巾" }, { id: 73, word: "obey", detail: "v. 聽從" }, { id: 74, word: "package", detail: "n. 包裹" }, { id: 75, word: "quarter", detail: "n. 四分之一" },
-            { id: 76, word: "refrigerator", detail: "n. 冰箱" }, { id: 77, word: "sandwich", detail: "n. 三明治" }, { id: 78, word: "teacher", detail: "n. 老師" }, { id: 79, word: "umbrella", detail: "n. 雨傘" }, { id: 80, word: "vacation", detail: "n. 假期" },
-            { id: 81, word: "waiter", detail: "n. 服務生" }, { id: 82, word: "yesterday", detail: "n. 昨天" }, { id: 83, word: "zero", detail: "n. 零" }, { id: 84, word: "zoo", detail: "n. 動物園" }
-            // 💡 提示：此處可自由將 PDF 內剩餘單字依此格式持續貼上補充，分頁功能已完全就緒。
+            { id: 46, word: "aloud", detail: "adv. 大聲地" }, { id: 47, word: "already", detail: "adv. 已經" }, { id: 48, word: "also", detail: "adv. 也" }, { id: 49, word: "altogether", detail: "adv. 總共" }, { id: 50, word: "always", detail: "adv. 總是" },
+            { id: 51, word: "ambulance", detail: "n. 救護車" }, { id: 52, word: "among", detail: "prep. 在...之間" }, { id: 53, text: "ancient", word: "ancient", detail: "adj. 古代的" }, { id: 54, word: "angel", detail: "n. 天使" }, { id: 55, word: "anger", detail: "n. 憤怒" },
+            { id: 56, word: "angry", detail: "adj. 生氣的" }, { id: 57, word: "ankle", detail: "n. 腳踝" }, { id: 58, word: "baby", detail: "n. 嬰兒" }, { id: 59, word: "badminton", detail: "n. 羽毛球" }, { id: 60, word: "bakery", detail: "n. 麵包店" },
+            { id: 61, word: "budget", detail: "n. 預算" }, { id: 62, word: "cabbage", detail: "n. 甘藍菜" }, { id: 63, word: "cafeteria", detail: "n. 自助餐廳" }, { id: 64, word: "calendar", detail: "n. 日曆" }, { id: 65, word: "camera", detail: "n. 照相機" },
+            { id: 66, word: "character", detail: "n. 個性/角色" }, { id: 67, word: "delicious", detail: "adj. 美味的" }, { id: 68, word: "direction", detail: "n. 方向" }, { id: 69, word: "earring", detail: "n. 耳環" }, { id: 70, word: "factory", detail: "n. 工廠" },
+            { id: 71, word: "vocabulary", detail: "n. 字彙" }, { id: 72, word: "volleyball", detail: "n. 排球" }, { id: 73, word: "wallet", detail: "n. 皮夾" }, { id: 74, word: "watermelon", detail: "n. 西瓜" }, { id: 75, word: "yesterday", detail: "n. 昨天" }
         ];
 
         let currentUser = null;
-        let userCloudData = { completedWords: [], studyTime: 0, target: "" };
+        let userCloudData = { completedWords: [], studyTime: 0, target: "", name: "" };
         let isAuthLoginMode = true;
-        const ITEMS_PER_PAGE = 15;
+        const ITEMS_PER_PAGE = 12;
 
-        // 初始化單字分頁下拉選單
+        let currentForumFilter = 'all';
+        let unsubscribeForum = null;
+        let unsubscribeLeaderboard = null;
+
+        // 初始化單字分頁
         function initVocabPagination() {
             const select = document.getElementById("vocab-page-select");
             select.innerHTML = "";
@@ -179,7 +302,7 @@
             for(let i=0; i<pageCount; i++) {
                 const opt = document.createElement("option");
                 opt.value = i;
-                opt.innerText = `第 ${i+1} 區段 (${i*ITEMS_PER_PAGE+1}~${Math.min((i+1)*ITEMS_PER_PAGE, rawWordBank.length)}字)`;
+                opt.innerText = `區段 ${i+1} (${i*ITEMS_PER_PAGE+1}~${Math.min((i+1)*ITEMS_PER_PAGE, rawWordBank.length)}字)`;
                 select.appendChild(opt);
             }
             loadVocabPage();
@@ -223,14 +346,21 @@
             } else {
                 userCloudData.completedWords.push(id);
             }
-            await updateDoc(doc(window.fbDb, "users", currentUser.uid), { completedWords: userCloudData.completedWords });
+            await window.firebaseUpdateDoc(window.firebaseDoc(window.fbDb, "users", currentUser.uid), { completedWords: userCloudData.completedWords });
             loadVocabPage();
         }
 
-        // 2. 社群讀書時長活頁排行榜即時更新引擎
+        // 2. 排行榜即時更新 (時長競賽聯賽邏輯)
         function startLeaderboardListener() {
-            const q = query(collection(window.fbDb, "users"), orderBy("studyTime", "desc"), limit(10));
-            onSnapshot(q, (snapshot) => {
+            if(unsubscribeLeaderboard) unsubscribeLeaderboard();
+            
+            const q = window.firebaseQuery(
+                window.firebaseCollection(window.fbDb, "users"), 
+                window.firebaseOrderBy("studyTime", "desc"), 
+                window.firebaseLimit(10)
+            );
+            
+            unsubscribeLeaderboard = window.firebaseOnSnapshot(q, (snapshot) => {
                 const container = document.getElementById("leaderboard-list");
                 container.innerHTML = "";
                 let rank = 1;
@@ -239,21 +369,31 @@
                     const min = Math.floor((data.studyTime || 0) / 60);
                     const isMe = currentUser && doc.id === currentUser.uid;
                     const div = document.createElement("div");
-                    div.className = `flex justify-between items-center p-2 rounded-xl ${isMe ? 'bg-indigo-50 border border-indigo-200 font-bold' : 'bg-slate-50'}`;
+                    div.className = `flex justify-between items-center p-2 rounded-xl text-[11px] ${isMe ? 'bg-indigo-50 border border-indigo-200 font-bold text-indigo-950' : 'bg-slate-50 border border-slate-100'}`;
+                    
+                    let medal = `#${rank}`;
+                    if(rank === 1) medal = "🥇 首位";
+                    if(rank === 2) medal = "🥈 榜眼";
+                    if(rank === 3) medal = "🥉 探花";
+
                     div.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <span class="w-5 text-center font-black ${rank<=3?'text-amber-500':''}">#${rank}</span>
-                            <span>${data.name || '無名戰士'}${data.target ? ` 🎯 ${data.target}` : ''}</span>
+                        <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                            <span class="w-10 shrink-0 font-black text-slate-400 ${rank<=3?'text-amber-500 text-xs':''}">${medal}</span>
+                            <span class="truncate max-w-[90px]">${data.name || '無名戰士'}</span>
+                            ${data.target ? `<span class="text-[10px] text-amber-600 bg-amber-50 px-1 rounded truncate max-w-[80px]">🎯 ${data.target}</span>` : ''}
                         </div>
-                        <span class="text-indigo-600 font-semibold">${min} 分鐘</span>
+                        <span class="text-indigo-600 font-bold shrink-0 ml-1">${min} 分鐘</span>
                     `;
                     container.appendChild(div);
                     rank++;
                 });
+                if(rank === 1) {
+                    container.innerHTML = `<p class="text-slate-400 text-center py-4">目前尚無戰火時長記錄...</p>`;
+                }
             });
         }
 
-        // 3. 計時器累加與暫停同步
+        // 3. 計時器模組
         let timerInterval, seconds = 0, isRunning = false;
         function toggleTimer() {
             const btn = document.getElementById("btn-start");
@@ -284,13 +424,27 @@
             document.getElementById("btn-start").className = "flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition";
         }
         async function syncStudyTimeCloud(secs) {
-            if(!currentUser) { alert("讀書時間已記錄在本地！登入後將可同步至社群爭霸榜。"); return; }
+            if(!currentUser) { alert("讀書時間已在本地記錄！註冊/登入後方能同步至全台社群時長比賽榜！"); return; }
             if(secs > 0) {
-                await updateDoc(doc(window.fbDb, "users", currentUser.uid), { studyTime: increment(secs) });
+                await window.firebaseUpdateDoc(window.firebaseDoc(window.fbDb, "users", currentUser.uid), { studyTime: window.firebaseIncrement(secs) });
+                userCloudData.studyTime += secs;
             }
         }
 
-        // 4. 註冊、登入與狀態檢測
+        // 4. 個人檔案與控制
+        function openProfileModal() {
+            if(!currentUser) return;
+            document.getElementById("profile-user-name").innerText = userCloudData.name || "會考戰士";
+            document.getElementById("profile-user-email").innerText = currentUser.email;
+            document.getElementById("profile-total-time").innerText = Math.floor((userCloudData.studyTime || 0) / 60);
+            document.getElementById("profile-total-words").innerText = (userCloudData.completedWords || []).length;
+            document.getElementById("profile-target-display").innerText = userCloudData.target ? userCloudData.target : "尚未設定志願學校";
+            
+            document.getElementById("profile-modal").classList.remove("hidden");
+        }
+        function closeProfileModal() { document.getElementById("profile-modal").classList.add("hidden"); }
+
+        // 5. 認證登入邏輯
         function openAuthModal() { document.getElementById("auth-modal").classList.remove("hidden"); }
         function closeAuthModal() { document.getElementById("auth-modal").classList.add("hidden"); }
         function toggleAuthMode() {
@@ -300,53 +454,219 @@
             document.getElementById("auth-switch-text").innerText = isAuthLoginMode ? "還沒有帳號嗎？" : "已經有戰士帳號？";
             document.getElementById("btn-switch-auth").innerText = isAuthLoginMode ? "點我註冊" : "點我登入";
         }
+        
         async function handleAuth() {
             const email = document.getElementById("auth-email").value;
             const pwd = document.getElementById("auth-pwd").value;
             const name = document.getElementById("auth-name").value;
+
+            if(!email || !pwd) { alert("請填寫完整的 Email 與密碼！"); return; }
+
             try {
                 if(isAuthLoginMode) {
-                    await signInWithEmailAndPassword(window.fbAuth, email, pwd);
+                    await window.firebaseLogin(window.fbAuth, email, pwd);
+                    alert("登入成功！已成功啟用永久記住帳號功能機制。");
                 } else {
                     if(!name) { alert("註冊時請輸入戰士暱稱！"); return; }
-                    const cred = await createUserWithEmailAndPassword(window.fbAuth, email, pwd);
-                    await setDoc(doc(window.fbDb, "users", cred.user.uid), { name: name, studyTime: 0, completedWords: [], target: "" });
+                    const cred = await window.firebaseRegister(window.fbAuth, email, pwd);
+                    await window.firebaseSetDoc(window.firebaseDoc(window.fbDb, "users", cred.user.uid), { 
+                        name: name, 
+                        studyTime: 0, 
+                        completedWords: [], 
+                        target: "" 
+                    });
+                    alert("建立戰士帳號成功！歡迎加入衝刺聯賽！");
                 }
                 closeAuthModal();
-            } catch (err) { alert("認證異常：" + err.message); }
+            } catch (err) { 
+                alert("認證異動提示：" + err.message); 
+            }
         }
 
-        setTimeout(() => {
-            onAuthStateChanged(window.fbAuth, async (user) => {
+        async function handleLogOut() {
+            if(confirm("確定要登出當前戰士帳號嗎？下次進入將需要重新認證登入。")) {
+                await window.firebaseSignOut(window.fbAuth);
+                closeProfileModal();
+                alert("已成功登出。");
+            }
+        }
+
+        // 6. 核心狀態狀態持續監聽
+        function listenToAuthChange() {
+            window.firebaseOnAuthStateChanged(window.fbAuth, async (user) => {
                 const statusArea = document.getElementById("auth-status-area");
                 if (user) {
                     currentUser = user;
-                    const snap = await getDoc(doc(window.fbDb, "users", user.uid));
-                    if(snap.exists()) userCloudData = snap.data();
-                    statusArea.innerHTML = `<span class="mr-3 font-medium">👋 ${userCloudData.name || '戰士'}</span><button onclick="window.fbAuth.signOut()" class="bg-rose-500/20 text-rose-200 px-3 py-1 rounded-xl transition">登出</button>`;
+                    const snap = await window.firebaseGetDoc(window.firebaseDoc(window.fbDb, "users", user.uid));
+                    if(snap.exists()) {
+                        userCloudData = snap.data();
+                    } else {
+                        userCloudData = { completedWords: [], studyTime: 0, target: "", name: "未命名戰士" };
+                    }
+                    
+                    statusArea.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <button onclick="openProfileModal()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 backdrop-blur-sm">
+                                <i class="fa-solid fa-user-gear"></i> ${userCloudData.name || '會考戰士'}
+                            </button>
+                        </div>
+                    `;
                     document.getElementById("target-input").value = userCloudData.target || "";
-                    startLeaderboardListener();
+                    document.getElementById("forum-sender-name").innerText = userCloudData.name || '會考戰士';
                 } else {
                     currentUser = null;
-                    userCloudData = { completedWords: [], studyTime: 0, target: "" };
-                    statusArea.innerHTML = `<button onclick="openAuthModal()" class="bg-white/20 px-4 py-1.5 rounded-xl font-medium backdrop-blur-sm">註冊 / 登入</button>`;
+                    userCloudData = { completedWords: [], studyTime: 0, target: "", name: "" };
+                    statusArea.innerHTML = `
+                        <button onclick="openAuthModal()" class="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-xl font-medium transition backdrop-blur-sm">
+                            <i class="fa-solid fa-user-plus mr-1"></i> 註冊 / 登入
+                        </button>
+                    `;
                     document.getElementById("target-input").value = "";
+                    document.getElementById("forum-sender-name").innerText = '訪客考生';
                 }
                 loadVocabPage();
             });
-        }, 1200);
+        }
 
         async function saveTargetCloud() {
             const val = document.getElementById("target-input").value;
-            if(currentUser) { await updateDoc(doc(window.fbDb, "users", currentUser.uid), { target: val }); }
+            if(currentUser) { 
+                await window.firebaseUpdateDoc(window.firebaseDoc(window.fbDb, "users", currentUser.uid), { target: val }); 
+                userCloudData.target = val;
+            }
+        }
+
+        // 7. 誓師廣場留言板邏輯控制
+        function filterForum(tag) {
+            currentForumFilter = tag;
+            const tabs = ['all', '激勵', '發問', '抒發'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`forum-tab-${t}`);
+                if(btn) {
+                    btn.className = (t === tag) 
+                        ? "px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm shrink-0"
+                        : "px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium shrink-0";
+                }
+            });
+            startForumListener();
+        }
+
+        function startForumListener() {
+            if(unsubscribeForum) unsubscribeForum();
+
+            const q = window.firebaseQuery(
+                window.firebaseCollection(window.fbDb, "forum"), 
+                window.firebaseOrderBy("createdAt", "desc"), 
+                window.firebaseLimit(30)
+            );
+
+            unsubscribeForum = window.firebaseOnSnapshot(q, (snapshot) => {
+                const container = document.getElementById("forum-posts-container");
+                container.innerHTML = "";
+                let hasPost = false;
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const postId = docSnap.id;
+
+                    if(currentForumFilter !== 'all' && data.tag !== currentForumFilter) return;
+                    hasPost = true;
+
+                    let tagBadge = `<span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-bold">🔥 激勵</span>`;
+                    if(data.tag === '發問') tagBadge = `<span class="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded text-[10px] font-bold">📝 發問</span>`;
+                    if(data.tag === '抒發') tagBadge = `<span class="bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded text-[10px] font-bold">☕ 抒發</span>`;
+
+                    let timeDesc = "剛剛";
+                    if(data.createdAt) {
+                        const date = data.createdAt.toDate();
+                        timeDesc = `${date.getMonth()+1}/${date.getDate()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+                    }
+
+                    const div = document.createElement("div");
+                    div.className = "p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5 hover:border-slate-200 transition";
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center text-[10px]">
+                            <div class="flex items-center gap-1.5 font-bold text-slate-600 min-w-0">
+                                ${tagBadge}
+                                <span class="truncate max-w-[80px]">${data.senderName || '匿名戰士'}</span>
+                                ${data.targetSchool ? `<span class="text-amber-600 font-normal truncate max-w-[80px]">🎯 ${data.targetSchool}</span>` : ''}
+                            </div>
+                            <span class="text-slate-400 shrink-0">${timeDesc}</span>
+                        </div>
+                        <p class="text-slate-700 font-medium break-all text-xs">${escapeHtml(data.content)}</p>
+                        <div class="flex justify-end gap-3 text-[11px] border-t border-slate-100/60 pt-1.5 mt-1 text-slate-400">
+                            <button onclick="likePost('${postId}')" class="hover:text-rose-500 font-medium flex items-center gap-1 transition">
+                                <i class="fa-regular fa-heart text-rose-400"></i> 集氣 (<span id="like-count-${postId}">${data.likes || 0}</span>)
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+
+                if(!hasPost) {
+                    container.innerHTML = `<p class="text-slate-400 text-center py-6">此分區目前空空如也，快來搶沙發！</p>`;
+                }
+            });
+        }
+
+        async function sendForumPost() {
+            const input = document.getElementById("forum-input");
+            const tag = document.getElementById("forum-tag-select").value;
+            const content = input.value.trim();
+
+            if(!content) { alert("請輸入留言內容！"); return; }
+            if(content.length > 100) { alert("發言請控制在 100 字以內。"); return; }
+
+            const senderName = currentUser && userCloudData ? userCloudData.name : "訪客考生";
+            const targetSchool = currentUser && userCloudData ? userCloudData.target : "";
+
+            try {
+                await window.firebaseAddDoc(window.firebaseCollection(window.fbDb, "forum"), {
+                    tag: tag,
+                    senderName: senderName,
+                    targetSchool: targetSchool,
+                    content: content,
+                    likes: 0,
+                    createdAt: new Date()
+                });
+                input.value = "";
+            } catch(err) {
+                alert("發布失敗：" + err.message);
+            }
+        }
+
+        async function likePost(postId) {
+            try {
+                const postRef = window.firebaseDoc(window.fbDb, "forum", postId);
+                await window.firebaseUpdateDoc(postRef, { likes: window.firebaseIncrement(1) });
+            } catch(err) {
+                console.error("點讚出錯:", err);
+            }
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
         function updateCountdown() {
+            // 2027年會考時間設定
             const gap = new Date("2027-05-15T00:00:00").getTime() - new Date().getTime();
             document.getElementById("countdown-days").innerText = gap > 0 ? Math.ceil(gap / (1000 * 60 * 60 * 24)) : 0;
         }
 
-        window.onload = function() { updateCountdown(); initVocabPagination(); setInterval(updateCountdown, 60000); }
+        // 8. 系統載入啟動點
+        window.onload = function() { 
+            updateCountdown(); 
+            initVocabPagination(); 
+            setInterval(updateCountdown, 60000); 
+            
+            // 延遲載入以確保 Firebase 初始化就緒
+            setTimeout(() => {
+                listenToAuthChange();
+                startLeaderboardListener();
+                startForumListener();
+            }, 1000);
+        }
     </script>
 </body>
 </html>
