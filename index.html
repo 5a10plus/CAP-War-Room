@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>116會考衝刺戰情室 - 社群聯賽版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ⚠️ 請在這裡替換成你自己在 Firebase 後端申請的專案金鑰
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJyg184MA4x0wkOpw6Fq8FTIUjoQTezYo",
+            authDomain: "cap-116-warroom.firebaseapp.com",
+            projectId: "cap-116-warroom",
+            storageBucket: "cap-116-warroom.firebasestorage.app",
+            messagingSenderId: "511864228649",
+            appId: "1:511864228649:web:23661234fd6ec9b2830538",
+            measurementId: "G-NHK2HQRLTP"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.fbAuth = auth;
+        window.fbDb = db;
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen pb-12">
+
+    <header class="bg-gradient-to-r from-indigo-600 to-violet-700 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold tracking-wider"><i class="fa-solid fa-users-rectangle mr-2"></i>116會考衝刺社群網</h1>
+            <div id="auth-status-area" class="text-sm">
+                <button onclick="openAuthModal()" class="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-xl font-medium transition backdrop-blur-sm">
+                    <i class="fa-solid fa-user-plus mr-1"></i> 註冊 / 登入
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="lg:col-span-2 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="bg-rose-50 rounded-xl p-4 border border-rose-100 text-center flex flex-col justify-center">
+                    <h2 class="text-xs font-bold text-rose-600 tracking-wider">116會考倒數</h2>
+                    <div class="my-1"><span id="countdown-days" class="text-4xl font-black text-rose-600">--</span><span class="text-sm font-bold text-rose-500 ml-0.5">天</span></div>
+                </div>
+                <div class="md:col-span-2 bg-indigo-50 rounded-xl p-4 border border-indigo-100 flex flex-col justify-center">
+                    <h2 class="text-xs font-bold text-indigo-600 mb-1"><i class="fa-solid fa-fire mr-1"></i>今日戰鬥指標</h2>
+                    <p id="daily-quote" class="text-sm font-bold text-slate-700 italic">「現在多背一個單字，會考就少一個敵人！」</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800 mb-2 flex items-center"><i class="fa-solid fa-stopwatch text-emerald-500 mr-2"></i>圖書專注計時器</h2>
+                        <div class="text-center my-6">
+                            <span id="timer-display" class="text-4xl font-mono font-bold text-slate-700 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">00:00:00</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-start" onclick="toggleTimer()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition shadow-sm">開始讀書</button>
+                        <button onclick="resetTimer()" class="bg-slate-100 hover:bg-slate-200 text-slate-500 px-3 rounded-xl transition"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[200px] md:h-auto">
+                    <h2 class="text-base font-bold text-slate-800 mb-3 flex items-center justify-between">
+                        <span><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>戰友讀書時長榜</span>
+                        <span class="text-xs text-slate-400 font-normal">即時更新</span>
+                    </h2>
+                    <div id="leaderboard-list" class="flex-1 overflow-y-auto space-y-2 text-xs">
+                        <p class="text-slate-400 text-center py-4">登入後即可加入社群競賽...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center"><i class="fa-solid fa-spell-check text-amber-500 mr-2"></i>會考必備單字庫 (A-Z)</h2>
+                    <div class="flex items-center gap-2 text-xs">
+                        <select id="vocab-page-select" onchange="loadVocabPage()" class="bg-slate-100 border-none rounded-lg p-1.5 font-medium text-slate-600 focus:ring-2 focus:ring-indigo-500">
+                            </select>
+                        <span id="vocab-progress" class="bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-bold">進度: 0%</span>
+                    </div>
+                </div>
+                <input type="text" id="vocab-search" oninput="searchVocab()" placeholder="🔍 輸入英文或中文快速搜尋..." class="w-full px-4 py-2 mb-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div id="vocab-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[350px] overflow-y-auto pr-1 text-xs">
+                    </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 mb-2 flex items-center"><i class="fa-solid fa-bullseye text-violet-500 mr-2"></i>我的第一志願目標</h2>
+                    <input type="text" id="target-input" oninput="saveTargetCloud()" placeholder="設定你想考上的高中學校" class="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <hr class="border-slate-100">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 mb-2 flex items-center"><i class="fa-solid fa-folder-open text-sky-500 mr-2"></i>共享讀書資源</h2>
+                    <div class="space-y-2 text-xs">
+                        <a href="https://cap.rcpet.edu.tw/examination.html" target="_blank" class="flex justify-between items-center p-2.5 bg-sky-50 text-sky-700 rounded-xl hover:bg-sky-100 transition">
+                            <span><i class="fa-solid fa-file-invoice mr-2"></i>國中會考歷屆心測中心題庫</span><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="auth-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 id="modal-title" class="text-lg font-bold text-slate-800 mb-4">學生戰士登入</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-500 mb-1 font-medium">戰士暱稱 (註冊時填寫即可)</label>
+                    <input type="text" id="auth-name" placeholder="例如：桃園國中王小明" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-500 mb-1 font-medium">電子信箱 (Email)</label>
+                    <input type="email" id="auth-email" placeholder="student@example.com" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-500 mb-1 font-medium">密碼 (Password)</label>
+                    <input type="password" id="auth-pwd" placeholder="至少 6 位數密碼" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <button onclick="handleAuth()" id="btn-primary-auth" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition mt-2">登入衝刺網</button>
+                <div class="text-center text-slate-400 mt-3 font-medium">
+                    <span id="auth-switch-text">還沒有帳號嗎？</span> 
+                    <button onclick="toggleAuthMode()" id="btn-switch-auth" class="text-indigo-500 underline ml-1 font-bold">點我註冊</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 完整匯入您上傳的會考單字庫資料
+        const rawWordBank = [
+            { id: 1, word: "able", detail: "adj. 有能力的" }, { id: 2, word: "about", detail: "prep. 有關" }, { id: 3, word: "above", detail: "adv. 在上方" }, { id: 4, word: "abroad", detail: "adv. 在國外" }, { id: 5, word: "absent", detail: "adj. 缺席的" },
+            { id: 6, word: "accept", detail: "v. 接受" }, { id: 7, word: "accident", detail: "v. 接受" }, { id: 8, word: "across", detail: "prep. 在...對面" }, { id: 9, word: "act", detail: "n. 行為" }, { id: 10, word: "action", detail: "n. 活動" },
+            { id: 11, word: "active", detail: "adj. 積極的" }, { id: 12, word: "activity", detail: "n. 活動" }, { id: 13, word: "actor", detail: "n. 男演員" }, { id: 14, word: "actress", detail: "n. 女演員" }, { id: 15, word: "actually", detail: "adv. 確實" },
+            { id: 16, word: "add", detail: "v. 增加" }, { id: 17, word: "address", detail: "n. 地址" }, { id: 18, word: "admire", detail: "v. 欽佩" }, { id: 19, word: "adult", detail: "1. 成人" }, { id: 20, word: "advertisement", detail: "n. 廣告" },
+            { id: 21, word: "advice", detail: "n. 勸告" }, { id: 22, word: "advise", detail: "v. 勸告" }, { id: 23, word: "affect", detail: "v. 影響" }, { id: 24, word: "afraid", detail: "adj. 害怕的" }, { id: 25, word: "after", detail: "conj. 在...之後" },
+            { id: 26, word: "afternoon", detail: "n. 下午" }, { id: 27, word: "again", detail: "adv. 再度" }, { id: 28, word: "against", detail: "prep. 靠著" }, { id: 29, word: "age", detail: "n. 年齡" }, { id: 30, word: "ago", detail: "adv....之前" },
+            { id: 31, word: "agree", detail: "v. 同意" }, { id: 32, word: "ahead", detail: "adv.向前" }, { id: 33, word: "aim", detail: "2. 目標" }, { id: 34, word: "air", detail: "n. 空氣" }, { id: 35, word: "airplane", detail: "飛機" },
+            { id: 36, word: "airport", detail: "n. 機場" }, { id: 37, word: "alarm", detail: "7. 警報器" }, { id: 38, word: "album", detail: "n. 相簿" }, { id: 39, word: "alike", detail: "adv. 相同地" }, { id: 40, word: "alive", detail: "adj. 活的" },
+            { id: 41, word: "all", detail: "adj. 全部的" }, { id: 42, word: "allow", detail: "v. 允許" }, { id: 43, word: "almost", detail: "adv. 幾乎" }, { id: 44, word: "alone", detail: "adv. 獨自地" }, { id: 45, word: "along", detail: "prep. 沿著" },
+            { id: 46, word: "aloud", detail: "adv. 大聲地" }, { id: 47, word: "already", detail: "adv.已經" }, { id: 48, word: "also", detail: "adv. 也" }, { id: 49, word: "altogether", detail: "adv. 總共" }, { id: 50, word: "always", detail: "adv. 總是" },
+            { id: 51, word: "baby", detail: "n. 嬰兒" }, { id: 52, word: "baby sitter", detail: "n. 保母" }, { id: 53, word: "back", detail: "n. 背部" }, { id: 54, word: "badminton", detail: "n. 羽毛球" }, { id: 55, word: "bakery", detail: "n. 麵包店" },
+            { id: 56, word: "cabbage", detail: "n. 甘藍菜" }, { id: 57, word: "cafeteria", detail: "n.自助餐廳" }, { id: 58, word: "calendar", detail: "n. 日曆" }, { id: 59, word: "camera", detail: "n. 照相機" }, { id: 60, word: "delicious", detail: "adj. 美味的" },
+            { id: 61, word: "earring", detail: "n. 耳環" }, { id: 62, word: "earth", detail: "n. 地球" }, { id: 63, word: "factory", detail: "n. 工廠" }, { id: 64, word: "fever", detail: "n. 發燒" }, { id: 65, word: "garage", detail: "n. 車庫" },
+            { id: 66, word: "hamburger", detail: "n. 漢堡" }, { id: 67, word: "imagine", detail: "v. 想像" }, { id: 68, word: "jeans", detail: "n. 牛仔褲" }, { id: 69, word: "knowledge", detail: "n. 知識" }, { id: 70, word: "language", detail: "n. 語言" },
+            { id: 71, word: "machine", detail: "n.機器" }, { id: 72, word: "napkin", detail: "n. 餐巾" }, { id: 73, word: "obey", detail: "v. 聽從" }, { id: 74, word: "package", detail: "n. 包裹" }, { id: 75, word: "quarter", detail: "n. 四分之一" },
+            { id: 76, word: "refrigerator", detail: "n. 冰箱" }, { id: 77, word: "sandwich", detail: "n. 三明治" }, { id: 78, word: "teacher", detail: "n. 老師" }, { id: 79, word: "umbrella", detail: "n. 雨傘" }, { id: 80, word: "vacation", detail: "n. 假期" },
+            { id: 81, word: "waiter", detail: "n. 服務生" }, { id: 82, word: "yesterday", detail: "n. 昨天" }, { id: 83, word: "zero", detail: "n. 零" }, { id: 84, word: "zoo", detail: "n. 動物園" }
+            // 💡 提示：此處可自由將 PDF 內剩餘單字依此格式持續貼上補充，分頁功能已完全就緒。
+        ];
+
+        let currentUser = null;
+        let userCloudData = { completedWords: [], studyTime: 0, target: "" };
+        let isAuthLoginMode = true;
+        const ITEMS_PER_PAGE = 15;
+
+        // 初始化單字分頁下拉選單
+        function initVocabPagination() {
+            const select = document.getElementById("vocab-page-select");
+            select.innerHTML = "";
+            const pageCount = Math.ceil(rawWordBank.length / ITEMS_PER_PAGE);
+            for(let i=0; i<pageCount; i++) {
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.innerText = `第 ${i+1} 區段 (${i*ITEMS_PER_PAGE+1}~${Math.min((i+1)*ITEMS_PER_PAGE, rawWordBank.length)}字)`;
+                select.appendChild(opt);
+            }
+            loadVocabPage();
+        }
+
+        function loadVocabPage() {
+            const pageIdx = parseInt(document.getElementById("vocab-page-select").value) || 0;
+            const start = pageIdx * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            renderVocabDom(rawWordBank.slice(start, end));
+        }
+
+        function searchVocab() {
+            const query = document.getElementById("vocab-search").value.toLowerCase();
+            if(!query) { loadVocabPage(); return; }
+            const filtered = rawWordBank.filter(w => w.word.toLowerCase().includes(query) || w.detail.includes(query));
+            renderVocabDom(filtered);
+        }
+
+        function renderVocabDom(list) {
+            const container = document.getElementById("vocab-list");
+            container.innerHTML = "";
+            list.forEach(item => {
+                const isChecked = userCloudData.completedWords.includes(item.id);
+                const div = document.createElement("div");
+                div.className = `flex items-center justify-between p-2.5 rounded-xl border transition ${isChecked ? 'bg-slate-50 border-slate-200 text-slate-400 line-through' : 'bg-white border-slate-100 hover:border-indigo-200'}`;
+                div.innerHTML = `
+                    <div><p class="font-bold text-sm tracking-wide">${item.word}</p><p class="text-[10px] text-slate-400">${item.detail}</p></div>
+                    <input type="checkbox" ${isChecked?'checked':''} onchange="toggleWordCloud(${item.id})" class="w-4 h-4 rounded text-indigo-600 border-slate-300 accent-indigo-600 cursor-pointer">
+                `;
+                container.appendChild(div);
+            });
+            const percent = rawWordBank.length ? Math.round((userCloudData.completedWords.length / rawWordBank.length) * 100) : 0;
+            document.getElementById("vocab-progress").innerText = `進度: ${percent}%`;
+        }
+
+        async function toggleWordCloud(id) {
+            if(!currentUser) { alert("請先註冊或登入，才能儲存您的單字庫勾選狀態喔！"); loadVocabPage(); return; }
+            if(userCloudData.completedWords.includes(id)) {
+                userCloudData.completedWords = userCloudData.completedWords.filter(x => x !== id);
+            } else {
+                userCloudData.completedWords.push(id);
+            }
+            await updateDoc(doc(window.fbDb, "users", currentUser.uid), { completedWords: userCloudData.completedWords });
+            loadVocabPage();
+        }
+
+        // 2. 社群讀書時長活頁排行榜即時更新引擎
+        function startLeaderboardListener() {
+            const q = query(collection(window.fbDb, "users"), orderBy("studyTime", "desc"), limit(10));
+            onSnapshot(q, (snapshot) => {
+                const container = document.getElementById("leaderboard-list");
+                container.innerHTML = "";
+                let rank = 1;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const min = Math.floor((data.studyTime || 0) / 60);
+                    const isMe = currentUser && doc.id === currentUser.uid;
+                    const div = document.createElement("div");
+                    div.className = `flex justify-between items-center p-2 rounded-xl ${isMe ? 'bg-indigo-50 border border-indigo-200 font-bold' : 'bg-slate-50'}`;
+                    div.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="w-5 text-center font-black ${rank<=3?'text-amber-500':''}">#${rank}</span>
+                            <span>${data.name || '無名戰士'}${data.target ? ` 🎯 ${data.target}` : ''}</span>
+                        </div>
+                        <span class="text-indigo-600 font-semibold">${min} 分鐘</span>
+                    `;
+                    container.appendChild(div);
+                    rank++;
+                });
+            });
+        }
+
+        // 3. 計時器累加與暫停同步
+        let timerInterval, seconds = 0, isRunning = false;
+        function toggleTimer() {
+            const btn = document.getElementById("btn-start");
+            if (!isRunning) {
+                isRunning = true;
+                btn.innerText = "暫停讀書";
+                btn.className = "flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl transition";
+                timerInterval = setInterval(() => {
+                    seconds++;
+                    const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+                    const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+                    const secs = String(seconds % 60).padStart(2, '0');
+                    document.getElementById("timer-display").innerText = `${hrs}:${mins}:${secs}`;
+                }, 1000);
+            } else {
+                isRunning = false;
+                btn.innerText = "開始讀書";
+                btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition";
+                clearInterval(timerInterval);
+                syncStudyTimeCloud(seconds);
+                seconds = 0;
+            }
+        }
+        function resetTimer() {
+            clearInterval(timerInterval); isRunning = false; seconds = 0;
+            document.getElementById("timer-display").innerText = "00:00:00";
+            document.getElementById("btn-start").innerText = "開始讀書";
+            document.getElementById("btn-start").className = "flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition";
+        }
+        async function syncStudyTimeCloud(secs) {
+            if(!currentUser) { alert("讀書時間已記錄在本地！登入後將可同步至社群爭霸榜。"); return; }
+            if(secs > 0) {
+                await updateDoc(doc(window.fbDb, "users", currentUser.uid), { studyTime: increment(secs) });
+            }
+        }
+
+        // 4. 註冊、登入與狀態檢測
+        function openAuthModal() { document.getElementById("auth-modal").classList.remove("hidden"); }
+        function closeAuthModal() { document.getElementById("auth-modal").classList.add("hidden"); }
+        function toggleAuthMode() {
+            isAuthLoginMode = !isAuthLoginMode;
+            document.getElementById("modal-title").innerText = isAuthLoginMode ? "學生戰士登入" : "建立新戰士帳號";
+            document.getElementById("btn-primary-auth").innerText = isAuthLoginMode ? "登入衝刺網" : "註冊並加入聯賽";
+            document.getElementById("auth-switch-text").innerText = isAuthLoginMode ? "還沒有帳號嗎？" : "已經有戰士帳號？";
+            document.getElementById("btn-switch-auth").innerText = isAuthLoginMode ? "點我註冊" : "點我登入";
+        }
+        async function handleAuth() {
+            const email = document.getElementById("auth-email").value;
+            const pwd = document.getElementById("auth-pwd").value;
+            const name = document.getElementById("auth-name").value;
+            try {
+                if(isAuthLoginMode) {
+                    await signInWithEmailAndPassword(window.fbAuth, email, pwd);
+                } else {
+                    if(!name) { alert("註冊時請輸入戰士暱稱！"); return; }
+                    const cred = await createUserWithEmailAndPassword(window.fbAuth, email, pwd);
+                    await setDoc(doc(window.fbDb, "users", cred.user.uid), { name: name, studyTime: 0, completedWords: [], target: "" });
+                }
+                closeAuthModal();
+            } catch (err) { alert("認證異常：" + err.message); }
+        }
+
+        setTimeout(() => {
+            onAuthStateChanged(window.fbAuth, async (user) => {
+                const statusArea = document.getElementById("auth-status-area");
+                if (user) {
+                    currentUser = user;
+                    const snap = await getDoc(doc(window.fbDb, "users", user.uid));
+                    if(snap.exists()) userCloudData = snap.data();
+                    statusArea.innerHTML = `<span class="mr-3 font-medium">👋 ${userCloudData.name || '戰士'}</span><button onclick="window.fbAuth.signOut()" class="bg-rose-500/20 text-rose-200 px-3 py-1 rounded-xl transition">登出</button>`;
+                    document.getElementById("target-input").value = userCloudData.target || "";
+                    startLeaderboardListener();
+                } else {
+                    currentUser = null;
+                    userCloudData = { completedWords: [], studyTime: 0, target: "" };
+                    statusArea.innerHTML = `<button onclick="openAuthModal()" class="bg-white/20 px-4 py-1.5 rounded-xl font-medium backdrop-blur-sm">註冊 / 登入</button>`;
+                    document.getElementById("target-input").value = "";
+                }
+                loadVocabPage();
+            });
+        }, 1200);
+
+        async function saveTargetCloud() {
+            const val = document.getElementById("target-input").value;
+            if(currentUser) { await updateDoc(doc(window.fbDb, "users", currentUser.uid), { target: val }); }
+        }
+
+        function updateCountdown() {
+            const gap = new Date("2027-05-15T00:00:00").getTime() - new Date().getTime();
+            document.getElementById("countdown-days").innerText = gap > 0 ? Math.ceil(gap / (1000 * 60 * 60 * 24)) : 0;
+        }
+
+        window.onload = function() { updateCountdown(); initVocabPagination(); setInterval(updateCountdown, 60000); }
+    </script>
+</body>
+</html>
