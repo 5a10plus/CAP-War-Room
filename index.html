@@ -54,7 +54,7 @@
     </script>
     <style>/* 頁尾基礎設定 */
         .site-footer {
-            background-color: #3a688f; /* 深質感背景色 */
+            background-color: #3a7c8f; /* 深質感背景色 */
             color: #e0e0e0;
             padding: 40px 20px 20px 20px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -120,7 +120,7 @@
             max-width: 1200px;
             margin: 30px auto 0 auto;
             padding-top: 20px;
-            border-top: 1px solid #2a2a2a;
+            border-top: 1px solid #ffffff;
             text-align: center;
         }
 
@@ -2341,43 +2341,131 @@
         }
 
         // 3. 計時器模組
-        let timerInterval, seconds = 0, isRunning = false;
-        function toggleTimer() {
-            const btn = document.getElementById("btn-start");
-            if (!isRunning) {
-                isRunning = true;
-                btn.innerText = "暫停讀書";
-                btn.className = "flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl transition";
-                timerInterval = setInterval(() => {
-                    seconds++;
-                    const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
-                    const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-                    const secs = String(seconds % 60).padStart(2, '0');
-                    document.getElementById("timer-display").innerText = `${hrs}:${mins}:${secs}`;
-                }, 1000);
-            } else {
-                isRunning = false;
-                btn.innerText = "開始讀書";
-                btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition";
-                clearInterval(timerInterval);
-                syncStudyTimeCloud(seconds);
-                seconds = 0;
+        // ==========================================
+        // 2. 圖書專注計時器核心邏輯 (防後台休眠安全版)
+        // ==========================================
+        let timerInterval = null;
+        let isTimerRunning = false;
+
+        // 頁面載入時，先自動檢查有沒有上次還在跑的計時器
+        document.addEventListener("DOMContentLoaded", () => {
+            initPersistentTimer();
+        });
+
+        // 當使用者從別的 App (如 LINE、IG) 切換回網頁時，強制同步最新時間
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && isTimerRunning) {
+                updateTimerDisplay(); 
             }
-        }
-        function resetTimer() {
-            clearInterval(timerInterval); isRunning = false; seconds = 0;
-            document.getElementById("timer-display").innerText = "00:00:00";
-            document.getElementById("btn-start").innerText = "開始讀書";
-            document.getElementById("btn-start").className = "flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition";
-        }
-        async function syncStudyTimeCloud(secs) {
-            if(!currentUser) { alert("讀書時間已在本地記錄！註冊/登入後方能同步至全台社群時長比賽榜！"); return; }
-            if(secs > 0) {
-                await window.firebaseUpdateDoc(window.firebaseDoc(window.fbDb, "users", currentUser.uid), { studyTime: window.firebaseIncrement(secs) });
-                userCloudData.studyTime += secs;
+        });
+
+        function initPersistentTimer() {
+            const savedStartTime = localStorage.getItem('studyTimerStartTime');
+            const savedRunningStatus = localStorage.getItem('studyTimerRunning');
+
+            if (savedRunningStatus === 'true' && savedStartTime) {
+                isTimerRunning = true;
+                const btn = document.getElementById("btn-start");
+                if(btn) {
+                    btn.innerText = "結束讀書";
+                    btn.className = "flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 rounded-xl transition shadow-sm";
+                }
+                // 重新啟動每秒刷新的計時器
+                timerInterval = setInterval(updateTimerDisplay, 1000);
+                updateTimerDisplay();
             }
         }
 
+        function toggleTimer() {
+            if (!currentUser) {
+                alert("請先註冊或登入，才能使用計時器紀錄讀書時長並參與聯賽榜喔！");
+                return;
+            }
+
+            const btn = document.getElementById("btn-start");
+
+            if (!isTimerRunning) {
+                // 【開始計時】
+                isTimerRunning = true;
+                btn.innerText = "結束讀書";
+                btn.className = "flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 rounded-xl transition shadow-sm";
+
+                // 核心：紀錄下點擊開始的「當下絕對時間」並寫入暫存
+                const startTime = Date.now();
+                localStorage.setItem('studyTimerStartTime', startTime);
+                localStorage.setItem('studyTimerRunning', 'true');
+
+                timerInterval = setInterval(updateTimerDisplay, 1000);
+                updateTimerDisplay();
+            } else {
+                // 【結束計時】
+                isTimerRunning = false;
+                btn.innerText = "開始讀書";
+                btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition shadow-sm";
+
+                clearInterval(timerInterval);
+
+                // 計算最後總共讀了多少秒
+                const startTime = parseInt(localStorage.getItem('studyTimerStartTime')) || Date.now();
+                const totalSecondsElapsed = Math.floor((Date.now() - startTime) / 1000);
+
+                // 清除暫存紀錄
+                localStorage.removeItem('studyTimerStartTime');
+                localStorage.removeItem('studyTimerRunning');
+                document.getElementById("timer-display").innerText = "00:00:00";
+
+                // 上傳時間到 Firebase 雲端資料庫
+                if (totalSecondsElapsed > 0) {
+                    uploadStudyTimeToFirebase(totalSecondsElapsed);
+                }
+            }
+        }
+
+        function updateTimerDisplay() {
+            const startTime = parseInt(localStorage.getItem('studyTimerStartTime'));
+            if (!startTime) return;
+
+            // 用「現在的絕對時間」扣掉「點擊開始的時間」，算出最精準的經過秒數
+            const totalSeconds = Math.floor((Date.now() - startTime) / 1000);
+
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+
+            const displayHrs = hrs < 10 ? "0" + hrs : hrs;
+            const displayMins = mins < 10 ? "0" + mins : mins;
+            const displaySecs = secs < 10 ? "0" + secs : secs;
+
+            const displayElement = document.getElementById("timer-display");
+            if(displayElement) {
+                displayElement.innerText = `${displayHrs}:${displayMins}:${displaySecs}`;
+            }
+        }
+
+        function resetTimer() {
+            // 如果正在計時，不允許直接重置（或是先關閉計時）
+            if (isTimerRunning) {
+                toggleTimer();
+            } else {
+                localStorage.removeItem('studyTimerStartTime');
+                localStorage.removeItem('studyTimerRunning');
+                document.getElementById("timer-display").innerText = "00:00:00";
+            }
+        }
+
+        async function uploadStudyTimeToFirebase(seconds) {
+            try {
+                const userRef = window.firebaseDoc(window.fbDb, "users", currentUser.uid);
+                // Firebase 累加秒數 (或是你原本是用分鐘計算，可以直接依你需求調整)
+                await window.firebaseUpdateDoc(userRef, {
+                    studyTime: window.firebaseIncrement(seconds)
+                });
+                alert(`太棒了！本次成功專注讀書了 ${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒，時間已同步到雲端聯賽榜！`);
+            } catch (err) {
+                console.error("時間上傳失敗:", err);
+                alert("時長上傳失敗，請檢查網路連線！");
+            }
+        }
         // 4. 個人檔案與控制
         function openProfileModal() {
             if(!currentUser) return;
